@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema TDR - INAMHI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <style>
+        body { background-color: #f1f5f9; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        .navbar-inamhi { background-color: #002244; }
+        .navbar-inamhi .navbar-brand, .navbar-inamhi .user-info { color: #fff; }
+        .card-kpi { border: none; border-radius: .75rem; transition: transform .15s ease; }
+        .card-kpi:hover { transform: translateY(-2px); }
+        .kpi-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+        .kpi-value { font-size: 1.7rem; font-weight: 700; }
+        .truncate-text { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
+        .btn-outline-print { color: #0284c7; border-color: #0284c7; }
+        .btn-outline-print:hover { background-color: #0284c7; color: #fff; }
+        #btn-guardar.modo-edicion { background-color: #d97706; border-color: #d97706; }
+        .table > :not(caption) > * > * { vertical-align: middle; }
+
+        /* --- Panel plegable del formulario --- */
+        #toggle-form { cursor: pointer; user-select: none; }
+        #toggle-form .chevron { transition: transform .25s ease; display: inline-block; }
+        #toggle-form.abierto .chevron { transform: rotate(180deg); }
+        .form-section-title { font-size: .78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .5rem; margin-top: .75rem; }
+        .form-section-title:first-child { margin-top: 0; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-inamhi navbar-dark px-4 py-2 mb-4 shadow-sm">
+        <span class="navbar-brand mb-0 h5">Sistema de Registro y Control de TDRs</span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="user-info small" id="user-display">Verificando identidad institucional...</span>
+            <button class="btn btn-danger btn-sm" onclick="cerrarSesion()">Cerrar Sesión ✕</button>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4" style="max-width: 1350px;">
+
+        <!-- ==================== PANEL PLEGABLE: FORMULARIO ==================== -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center"
+                 id="toggle-form" data-bs-toggle="collapse" data-bs-target="#panel-form" aria-expanded="false">
+                <h2 class="h6 text-primary-emphasis mb-0" id="form-titulo">➕ Registrar Nuevo TDR</h2>
+                <span class="chevron text-secondary">▼</span>
+            </div>
+            <div class="collapse" id="panel-form">
+                <div class="card-body">
+                    <form id="tdr-form" class="row g-3">
+
+                        <div class="col-12 form-section-title">1. Identificación del Proceso</div>
+                        <div class="col-md-6">
+                            <label for="numero_tdr" class="form-label fw-semibold small">Número de TDR</label>
+                            <input type="text" class="form-control" id="numero_tdr" placeholder="Ej. TDR-INAMHI-2026-002" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tipo_proceso" class="form-label fw-semibold small">Tipo de Proceso</label>
+                            <input type="text" class="form-control" id="tipo_proceso" placeholder="Ej. Ínfima cuantía, Subasta Inversa" required>
+                        </div>
+
+                        <div class="col-12 form-section-title">2. Descripción y Responsables</div>
+                        <div class="col-12">
+                            <label for="nombre_tarea" class="form-label fw-semibold small">Tarea / Proyecto / Objeto de Contratación</label>
+                            <input type="text" class="form-control" id="nombre_tarea" placeholder="Ej. Servicio técnico para digitalización y rescate de datos..." required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="direccion_solicitante" class="form-label fw-semibold small">Dirección Solicitante</label>
+                            <input type="text" class="form-control" id="direccion_solicitante" placeholder="Ej. Dirección de Información Hidrometeorológica" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="responsable_designado" class="form-label fw-semibold small">Responsable Designado</label>
+                            <input type="text" class="form-control" id="responsable_designado" placeholder="Ej. Ing. Darwin Rosero" required>
+                        </div>
+
+                        <div class="col-12 form-section-title">3. Presupuesto y Plazos</div>
+                        <div class="col-md-4">
+                            <label for="periodo_contrato" class="form-label fw-semibold small">Periodo del Contrato / Plazo</label>
+                            <input type="text" class="form-control" id="periodo_contrato" placeholder="Ej. 180 días, 1 año" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="presupuesto_codificado" class="form-label fw-semibold small">Presupuesto Codificado ($)</label>
+                            <input type="text" class="form-control" id="presupuesto_codificado" placeholder="$ 0,00" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="fecha_inicio" class="form-label fw-semibold small">Fecha de Inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="fecha_finalizacion" class="form-label fw-semibold small">Fecha de Fin</label>
+                            <input type="date" class="form-control" id="fecha_finalizacion" required>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetearFormulario()">Cancelar</button>
+                            <button type="submit" id="btn-guardar" class="btn btn-primary px-4">Guardar TDR en Sistema</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== KPIs (solo Director) ==================== -->
+        <div class="row g-3 mb-4" id="panel-kpis">
+            <div class="col-md-4">
+                <div class="card card-kpi bg-info-subtle border border-info-subtle">
+                    <div class="card-body">
+                        <div class="kpi-title text-info-emphasis">Presupuesto Total Codificado</div>
+                        <div class="kpi-value text-dark" id="kpi-presupuesto">$0.00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-kpi bg-warning-subtle border border-warning-subtle">
+                    <div class="card-body">
+                        <div class="kpi-title text-warning-emphasis">TDRs en Borrador</div>
+                        <div class="kpi-value text-dark" id="kpi-borrador">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card card-kpi bg-success-subtle border border-success-subtle">
+                    <div class="card-body">
+                        <div class="kpi-title text-success-emphasis">TDRs Aprobados / Firmados</div>
+                        <div class="kpi-value text-dark" id="kpi-aprobado">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== BUSCADOR ==================== -->
+        <div class="mb-3">
+            <input type="text" id="buscador" class="form-control" placeholder="🔍 Buscar por número de TDR, responsable, proceso o dirección técnica..." oninput="filtrarTDRs()">
+        </div>
+
+        <!-- ==================== TABLA ==================== -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h6 text-secondary mb-3">Listado de TDRs Registrados</h2>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Número TDR</th>
+                                <th>Tipo Proceso</th>
+                                <th>Tarea / Proyecto</th>
+                                <th>Dirección</th>
+                                <th>Responsable</th>
+                                <th>Plazo</th>
+                                <th>Presupuesto</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tdr-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Configuración de endpoint base apuntando al puerto activo detectado
+        const API_URL = 'http://127.0.0.1:5050/api/tdrs/';
+        let tdrIdEnEdicion = null;
+        let listaTdrsCache = [];
+
+        const token = localStorage.getItem('token');
+        const userRole = localStorage.getItem('user_role') || 'tecnico';
+        const userName = localStorage.getItem('user_name') || 'Funcionario';
+
+        // --- Manejo del panel plegable (Collapse) ---
+        const panelForm = document.getElementById('panel-form');
+        const toggleForm = document.getElementById('toggle-form');
+        const bsCollapse = new bootstrap.Collapse(panelForm, { toggle: false });
+
+        panelForm.addEventListener('show.bs.collapse', () => toggleForm.classList.add('abierto'));
+        panelForm.addEventListener('hide.bs.collapse', () => toggleForm.classList.remove('abierto'));
+
+        function abrirPanelForm() { bsCollapse.show(); }
+        function cerrarPanelForm() { bsCollapse.hide(); }
+
+        // =================================================================
+        // VALIDACIONES Y MÁSCARAS DE FORMULARIO
+        // =================================================================
+        function inicializarValidaciones() {
+            const campoInicio = document.getElementById('fecha_inicio');
+            const campoFin = document.getElementById('fecha_finalizacion');
+
+            if (campoInicio && campoFin) {
+                campoInicio.addEventListener('change', () => {
+                    if (campoInicio.value) campoFin.min = campoInicio.value;
+                    if (campoFin.value && campoFin.value < campoInicio.value) {
+                        campoFin.value = '';
+                        alert('La fecha de finalización no puede ser anterior a la fecha de inicio.');
+                    }
+                });
+
+                campoFin.addEventListener('change', () => {
+                    if (campoInicio.value && campoFin.value < campoInicio.value) {
+                        campoFin.value = '';
+                        alert('La fecha de finalización no puede ser anterior a la fecha de inicio.');
+                    }
+                });
+            }
+
+            const campoPresupuesto = document.getElementById('presupuesto_codificado');
+            if (campoPresupuesto) {
+                campoPresupuesto.addEventListener('input', (e) => {
+                    let value = e.target.value.replace(/\D/g, "");
+                    if (!value) {
+                        e.target.value = "";
+                        return;
+                    }
+                    let numericValue = parseFloat(value) / 100;
+                    e.target.value = numericValue.toLocaleString('es-EC', {
+                        style: 'currency',
+                        currency: 'USD'
+                    });
+                });
+            }
+
+            const campoTDR = document.getElementById('numero_tdr');
+            const PREFIX_TDR = "TDR-INAMHI-2026-";
+            if (campoTDR) {
+                campoTDR.addEventListener('focus', () => {
+                    if (!campoTDR.value.startsWith(PREFIX_TDR)) {
+                        campoTDR.value = PREFIX_TDR;
+                    }
+                });
+                campoTDR.addEventListener('input', (e) => {
+                    let value = e.target.value;
+                    if (!value.startsWith(PREFIX_TDR)) {
+                        let digitosLimpios = value.replace(PREFIX_TDR, "").replace(/\D/g, "");
+                        e.target.value = PREFIX_TDR + digitosLimpios;
+                        return;
+                    }
+                    let sufijoNumerico = value.substring(PREFIX_TDR.length).replace(/\D/g, "");
+                    e.target.value = PREFIX_TDR + sufijoNumerico.substring(0, 3);
+                });
+            }
+        }
+
+        function obtenerPresupuestoLimpio(valorFormateado) {
+            if (!valorFormateado) return 0.00;
+            let value = valorFormateado.toString().replace(/\D/g, "");
+            if (!value) return 0.00;
+            return parseFloat(value) / 100;
+        }
+
+        // =================================================================
+
+        window.onload = function() {
+            if (!token) {
+                alert("Acceso denegado. Por favor, inicie sesión.");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('user-display').innerText = `Conectado como: ${userName} (${userRole.toUpperCase()})`;
+
+            const panelKPIs = document.getElementById('panel-kpis');
+            panelKPIs.style.display = (userRole === 'director') ? 'flex' : 'none';
+
+            inicializarValidaciones();
+            cargarTDRs();
+        };
+
+        function cerrarSesion() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        async function cargarTDRs() {
+            try {
+                const respuesta = await fetch(API_URL, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (respuesta.status === 401 || respuesta.status === 413) {
+                    cerrarSesion();
+                    return;
+                }
+                listaTdrsCache = await respuesta.json();
+
+                actualizarKPIs(listaTdrsCache);
+                renderizarTabla(listaTdrsCache);
+            } catch (error) { console.error("Error de carga:", error); }
+        }
+
+        function actualizarKPIs(lista) {
+            let totalPresupuesto = 0;
+            let totalBorrador = 0;
+            let totalAprobado = 0;
+
+            lista.forEach(tdr => {
+                totalPresupuesto += parseFloat(tdr.presupuesto_codificado || 0);
+                if (tdr.estado.toLowerCase() === 'aprobado') {
+                    totalAprobado++;
+                } else if (tdr.estado.toLowerCase() === 'borrador') {
+                    totalBorrador++;
+                }
+            });
+
+            const presupuestoFormateado = totalPresupuesto.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+
+            document.getElementById('kpi-presupuesto').innerText = `$${presupuestoFormateado}`;
+            document.getElementById('kpi-borrador').innerText = totalBorrador;
+            document.getElementById('kpi-aprobado').innerText = totalAprobado;
+        }
+
+        function renderizarTabla(lista) {
+            const tabla = document.getElementById('tdr-body');
+            tabla.innerHTML = '';
+
+            if (lista.length === 0) {
+                tabla.innerHTML = `<tr><td colspan="9" class="text-center text-muted fst-italic py-4">No existen TDRs registrados en el sistema.</td></tr>`;
+                return;
+            }
+
+            lista.forEach(tdr => {
+                const fila = document.createElement('tr');
+                const esAprobado = tdr.estado.toLowerCase() === 'aprobado';
+                const claseBadge = esAprobado ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
+
+                let botonesAccion = '<div class="d-flex gap-1 align-items-center">';
+
+                if (!esAprobado) {
+                    if (userRole === 'director') {
+                        botonesAccion += `<button class="btn btn-sm btn-outline-success" onclick="aprobarTDR('${tdr.id}')">Aprobar</button>`;
+                    }
+                    botonesAccion += `<button class="btn btn-sm btn-outline-warning" onclick="prepararEdicion('${tdr.id}')">Editar</button>`;
+                    botonesAccion += `<button class="btn btn-sm btn-outline-danger" onclick="eliminarTDR('${tdr.id}')">Eliminar</button>`;
+                } else {
+                    botonesAccion += `<span class="text-success fw-bold small me-2">✓ Firmado</span>`;
+                    botonesAccion += `<button class="btn btn-sm btn-outline-print" onclick="imprimirTDR('${tdr.id}')">🖨️ Imprimir</button>`;
+                }
+
+                botonesAccion += '</div>';
+
+                fila.innerHTML = `
+                    <td><strong>${tdr.numero_tdr}</strong></td>
+                    <td>${tdr.tipo_proceso}</td>
+                    <td><span class="truncate-text" title="${tdr.nombre_tarea.replace(/"/g, '&quot;')}">${tdr.nombre_tarea}</span></td>
+                    <td>${tdr.direccion_solicitante}</td>
+                    <td>${tdr.responsable_designado}</td>
+                    <td>${tdr.periodo_contrato || 'N/A'}</td>
+                    <td><strong>$${tdr.presupuesto_codificado.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}</strong></td>
+                    <td><span class="badge rounded-pill ${claseBadge}">${tdr.estado.toUpperCase()}</span></td>
+                    <td>${botonesAccion}</td>
+                `;
+                tabla.appendChild(fila);
+            });
+        }
+
+        function filtrarTDRs() {
+            const query = document.getElementById('buscador').value.toLowerCase().trim();
+            if (!query) { renderizarTabla(listaTdrsCache); return; }
+
+            const filtrados = listaTdrsCache.filter(t =>
+                (t.numero_tdr || '').toLowerCase().includes(query) ||
+                (t.responsable_designado || '').toLowerCase().includes(query) ||
+                (t.direccion_solicitante || '').toLowerCase().includes(query) ||
+                (t.tipo_proceso || '').toLowerCase().includes(query) ||
+                (t.nombre_tarea || '').toLowerCase().includes(query)
+            );
+            renderizarTabla(filtrados);
+        }
+
+        function imprimirTDR(id) {
+            const tdr = listaTdrsCache.find(t => t.id == id);
+            if (!tdr) return;
+
+            const ventanaImpresion = window.open('', '_blank');
+            ventanaImpresion.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>TDR - ${tdr.numero_tdr}</title>
+                    <style>
+                        body { font-family: 'Arial', sans-serif; margin: 45px; color: #1e293b; line-height: 1.6; }
+                        .header { text-align: center; border-bottom: 3px double #003366; padding-bottom: 15px; margin-bottom: 30px; }
+                        .institution { font-size: 18px; font-weight: bold; color: #003366; text-transform: uppercase; margin: 0; }
+                        .sub-institution { font-size: 13px; color: #475569; margin: 4px 0 0 0; font-weight: 600; }
+                        .doc-title { font-size: 20px; font-weight: bold; color: #001f3f; margin-top: 20px; letter-spacing: 0.5px; }
+
+                        .meta-info { width: 100%; margin-top: 10px; margin-bottom: 30px; border-collapse: collapse; }
+                        .meta-info td { padding: 8px 12px; vertical-align: top; border: 1px solid #cbd5e1; font-size: 13px; }
+                        .meta-label { font-weight: bold; color: #003366; width: 30%; background-color: #f8fafc; }
+
+                        .section-title { font-size: 14px; font-weight: bold; color: #003366; text-transform: uppercase; border-bottom: 1.5px solid #004d80; padding-bottom: 4px; margin-top: 30px; margin-bottom: 12px; }
+                        .content-block { font-size: 13.5px; text-align: justify; margin-bottom: 15px; padding: 5px 0; white-space: pre-line; }
+
+                        .signatures { margin-top: 70px; display: flex; justify-content: space-around; text-align: center; page-break-inside: avoid; }
+                        .signature-block { width: 40%; font-size: 12.5px; }
+                        .signature-line { border-top: 1px solid #334155; margin-top: 60px; margin-bottom: 6px; }
+
+                        @media print {
+                            body { margin: 25px; }
+                            .meta-info td { border: 1px solid #000; }
+                            .section-title { border-bottom: 1.5px solid #000; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <p class="institution">Instituto Nacional de Meteorología e Hidrología</p>
+                        <p class="sub-institution">INAMHI - ECUADOR</p>
+                        <div class="doc-title">TÉRMINOS DE REFERENCIA (TDR)</div>
+                    </div>
+
+                    <table class="meta-info">
+                        <tr><td class="meta-label">CÓDIGO REFERENCIAL:</td><td><strong>${tdr.numero_tdr}</strong></td></tr>
+                        <tr><td class="meta-label">TIPO DE PROCESO:</td><td>${tdr.tipo_proceso}</td></tr>
+                        <tr><td class="meta-label">DIRECCIÓN TÉCNICA SOLICITANTE:</td><td>${tdr.direccion_solicitante}</td></tr>
+                        <tr><td class="meta-label">SERVIDOR RESPONSABLE:</td><td>${tdr.responsable_designado}</td></tr>
+                        <tr><td class="meta-label">PLAZO DE EJECUCIÓN:</td><td>${tdr.periodo_contrato || 'N/A'}</td></tr>
+                        <tr><td class="meta-label">PRESUPUESTO CODIFICADO VALIDADOR:</td><td><strong>$${tdr.presupuesto_codificado.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')} USD</strong></td></tr>
+                        <tr><td class="meta-label">CRONOGRAMA ESTIMADO:</td><td>Desde: ${tdr.fecha_inicio} &nbsp;|&nbsp; Hasta: ${tdr.fecha_finalizacion}</td></tr>
+                        <tr><td class="meta-label">ESTADO DE CERTIFICACIÓN:</td><td><strong style="color: #166534;">${tdr.estado.toUpperCase()} / VALIDADO INSTITUCIONALMENTE</strong></td></tr>
+                    </table>
+
+                    <div class="section-title">1. OBJETO DE LA CONTRATACIÓN Y TAREAS DESIGNADAS</div>
+                    <div class="content-block">${tdr.nombre_tarea}</div>
+
+                    <div class="section-title">2. ALCANCE Y NORMATIVA TÉCNICA APLICABLE</div>
+                    <div class="content-block">El presente proceso contractual e institucional se ejecutará bajo la estricta supervisión de la dirección requirente y del responsable técnico designado, dando cumplimiento a los cronogramas vigentes, planes de rescate u optimización de datos hidrometeorológicos y regulaciones internas del INAMHI.</div>
+
+                    <div class="signatures">
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <strong>${tdr.responsable_designado}</strong><br>
+                            Responsable Técnico / Elaborado por
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <strong>Dirección de Área Requirente</strong><br>
+                            Aprobado por / Firma de Autorización
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            ventanaImpresion.document.close();
+
+            ventanaImpresion.focus();
+            ventanaImpresion.print();
+            ventanaImpresion.close();
+        }
+
+        function prepararEdicion(id) {
+            const tdr = listaTdrsCache.find(t => t.id == id);
+            if (!tdr) return;
+
+            tdrIdEnEdicion = id;
+            document.getElementById('numero_tdr').value = tdr.numero_tdr;
+            document.getElementById('tipo_proceso').value = tdr.tipo_proceso;
+            document.getElementById('nombre_tarea').value = tdr.nombre_tarea;
+            document.getElementById('direccion_solicitante').value = tdr.direccion_solicitante;
+            document.getElementById('responsable_designado').value = tdr.responsable_designado;
+            document.getElementById('periodo_contrato').value = tdr.periodo_contrato;
+            document.getElementById('fecha_inicio').value = tdr.fecha_inicio;
+            document.getElementById('fecha_finalizacion').value = tdr.fecha_finalizacion;
+
+            const inputPresupuesto = document.getElementById('presupuesto_codificado');
+            inputPresupuesto.value = (tdr.presupuesto_codificado * 100).toFixed(0);
+            inputPresupuesto.dispatchEvent(new Event('input'));
+
+            document.getElementById('form-titulo').innerText = "✏️ Modificar TDR: " + tdr.numero_tdr;
+            const btn = document.getElementById('btn-guardar');
+            btn.innerText = "Actualizar Cambios";
+            btn.classList.add('modo-edicion');
+
+            abrirPanelForm();
+            document.getElementById('panel-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        document.getElementById('tdr-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const presupuestoFormateado = document.getElementById('presupuesto_codificado').value;
+
+            const datos = {
+                numero_tdr: document.getElementById('numero_tdr').value,
+                tipo_proceso: document.getElementById('tipo_proceso').value,
+                nombre_tarea: document.getElementById('nombre_tarea').value,
+                direccion_solicitante: document.getElementById('direccion_solicitante').value,
+                responsable_designado: document.getElementById('responsable_designado').value,
+                periodo_contrato: document.getElementById('periodo_contrato').value,
+                presupuesto_codificado: obtenerPresupuestoLimpio(presupuestoFormateado),
+                fecha_inicio: document.getElementById('fecha_inicio').value,
+                fecha_finalizacion: document.getElementById('fecha_finalizacion').value
+            };
+
+            const url = tdrIdEnEdicion !== null ? `${API_URL}${tdrIdEnEdicion}` : API_URL;
+            const metodo = tdrIdEnEdicion !== null ? 'PUT' : 'POST';
+            if (tdrIdEnEdicion === null) datos.estado = "Borrador";
+
+            try {
+                const r = await fetch(url, {
+                    method: metodo,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(datos)
+                });
+                if (r.ok) {
+                    alert('Operación realizada con éxito.');
+                    resetearFormulario();
+                    cargarTDRs();
+                } else {
+                    const err = await r.json();
+                    alert('Error: ' + JSON.stringify(err.detail || err));
+                }
+            } catch (e) { alert('Error de red.'); }
+        });
+
+        function resetearFormulario() {
+            tdrIdEnEdicion = null;
+            document.getElementById('tdr-form').reset();
+            document.getElementById('form-titulo').innerText = "➕ Registrar Nuevo TDR";
+            const btn = document.getElementById('btn-guardar');
+            btn.innerText = "Guardar TDR en Sistema";
+            btn.classList.remove('modo-edicion');
+            cerrarPanelForm();
+        }
+
+        // =================================================================
+        // COMPLEMENTOS DE ACCIÓN (Aprobar y Eliminar)
+        // =================================================================
+        async function aprobarTDR(id) {
+            if (!confirm('¿Está seguro de aprobar este TDR? Una vez aprobado quedará firmado de manera definitiva.')) return;
+            try {
+                const r = await fetch(`${API_URL}${id}/aprobar`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (r.ok) {
+                    alert('TDR aprobado con éxito.');
+                    cargarTDRs();
+                } else {
+                    alert('No se pudo aprobar el TDR. Verifique los permisos.');
+                }
+            } catch (e) { alert('Error de red al intentar aprobar.'); }
+        }
+
+        async function eliminarTDR(id) {
+            if (!confirm('¿Está seguro de eliminar de forma permanente este TDR del sistema?')) return;
+            try {
+                const r = await fetch(`${API_URL}${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (r.ok) {
+                    alert('TDR eliminado correctamente.');
+                    cargarTDRs();
+                } else {
+                    alert('No se pudo eliminar el registro.');
+                }
+            } catch (e) {
+                alert('Error de red al intentar eliminar.');
+            }
+        }
+    </script>
+</body>
+</html>
