@@ -32,3 +32,11 @@ app.include_router(tdr_api.router, prefix="/api/tdrs", tags=["Términos de Refer
 @app.get("/")
 def read_root():
     return {"mensaje": "Servidor del Sistema TDR del INAMHI funcionando. Rutas y CORS configurados exitosamente."}
+
+# ==========================================================
+# PUNTO DE ENTRADA Y CONFIGURACIÓN DEL PUERTO (PUERTO 8001)
+# ==========================================================
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

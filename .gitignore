@@ -1,0 +1,16 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Archivos compilados y cache de Python
+__pycache__/
+*.pyc
+
+# Base de datos local de pruebas
+*.db
+*.sqlite3
+
+# Configuraciones locales
+.env
+.vscode/
