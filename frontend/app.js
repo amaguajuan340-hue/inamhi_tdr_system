@@ -16,7 +16,11 @@ window.cerrarSesion = function() {
 window.resetearFormulario = function() {
     tdrIdEnEdicion = null;
     const form = document.getElementById('tdr-form');
-    if (form) form.reset();
+    if (form) {
+        form.reset();
+        form.classList.remove('was-validated');
+        form.querySelectorAll('.is-invalid, .is-valid').forEach(campo => campo.classList.remove('is-invalid', 'is-valid'));
+    }
     const titulo = document.getElementById('form-titulo');
     if (titulo) titulo.innerText = "➕ Registrar Nuevo TDR";
     const btn = document.getElementById('btn-guardar');
@@ -46,8 +50,74 @@ window.filtrarTDRs = function() {
     renderizarTabla(filtrados);
 };
 
+function mostrarNotificacion(mensaje, tipo = 'primary', duracionMs = 4000) {
+    const contenedor = document.getElementById('toast-container');
+    if (!contenedor) { alert(mensaje); return; }
+
+    const iconos = { success: '✓', danger: '✕', warning: '!', primary: 'i' };
+
+    const toast = document.createElement('div');
+    toast.className = `app-toast toast-${tipo}`;
+    toast.innerHTML = `
+        <div class="toast-icon">${iconos[tipo] || 'i'}</div>
+        <div class="toast-text"></div>
+        <button type="button" class="toast-close" aria-label="Cerrar">&times;</button>
+    `;
+    toast.querySelector('.toast-text').textContent = mensaje;
+
+    const cerrar = () => {
+        toast.classList.add('closing');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    };
+
+    toast.querySelector('.toast-close').addEventListener('click', cerrar);
+    contenedor.appendChild(toast);
+
+    setTimeout(cerrar, duracionMs);
+}
+
+function mostrarConfirmacion({ titulo, mensaje, tipo = 'primary', textoBoton = 'Aceptar', icono = '❓' }) {
+    return new Promise((resolve) => {
+        const modalEl = document.getElementById('modalConfirmacion');
+        if (!modalEl || typeof bootstrap === 'undefined') { resolve(confirm(mensaje)); return; }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        document.getElementById('confirmTitulo').textContent = titulo;
+        document.getElementById('confirmMensaje').textContent = mensaje;
+
+        const iconoEl = document.getElementById('confirmIcon');
+        iconoEl.textContent = icono;
+        iconoEl.className = `confirm-icon mb-3 confirm-icon-${tipo}`;
+
+        const btnAceptar = document.getElementById('confirmAceptar');
+        btnAceptar.textContent = textoBoton;
+        btnAceptar.className = `btn px-4 btn-confirm-${tipo}`;
+
+        let resuelto = false;
+        const onAceptar = () => { resuelto = true; modal.hide(); resolve(true); };
+        const onHidden = () => {
+            modalEl.removeEventListener('hidden.bs.modal', onHidden);
+            btnAceptar.removeEventListener('click', onAceptar);
+            if (!resuelto) resolve(false);
+        };
+
+        btnAceptar.addEventListener('click', onAceptar, { once: true });
+        modalEl.addEventListener('hidden.bs.modal', onHidden, { once: true });
+
+        modal.show();
+    });
+}
+
 window.aprobarTDR = async function(id) {
-    if (!confirm('¿Está seguro de aprobar este TDR? Una vez aprobado quedará firmado de manera definitiva.')) return;
+    const confirmado = await mostrarConfirmacion({
+        titulo: 'Aprobar TDR',
+        mensaje: 'Una vez aprobado, este TDR quedará firmado de manera definitiva y no podrá modificarse.',
+        tipo: 'success',
+        textoBoton: 'Sí, aprobar',
+        icono: '✓'
+    });
+    if (!confirmado) return;
+
     const token = localStorage.getItem('token');
     try {
         const r = await fetch(`${API_URL}${id}/aprobar`, {
@@ -55,21 +125,26 @@ window.aprobarTDR = async function(id) {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (r.ok) {
-            alert('TDR aprobado con éxito.');
+            mostrarNotificacion('TDR aprobado con éxito.', 'success');
             cargarTDRs();
         } else {
-            alert('No se pudo aprobar el TDR. Verifique los permisos.');
+            mostrarNotificacion('No se pudo aprobar el TDR. Verifique los permisos.', 'danger');
         }
-    } catch (e) { alert('Error de red al intentar aprobar.'); }
+    } catch (e) { mostrarNotificacion('Error de red al intentar aprobar.', 'danger'); }
 };
 
 window.anularTDR = async function(id) {
     const tdr = listaTdrsCache.find(t => t.id == id);
     if (!tdr) return;
 
-    if (!confirm(`¿Está seguro de ANULAR el TDR ${tdr.numero_tdr}? \nEl registro no se eliminará de la base de datos, pero quedará inactivo para auditoría.`)) {
-        return;
-    }
+    const confirmado = await mostrarConfirmacion({
+        titulo: 'Anular TDR',
+        mensaje: `¿Está seguro de anular el TDR ${tdr.numero_tdr}? El registro no se eliminará de la base de datos, pero quedará inactivo para auditoría.`,
+        tipo: 'danger',
+        textoBoton: 'Sí, anular',
+        icono: '⛔'
+    });
+    if (!confirmado) return;
 
     const token = localStorage.getItem('token');
     
@@ -90,13 +165,13 @@ window.anularTDR = async function(id) {
         });
 
         if (r.ok) {
-            alert(`El TDR ${tdr.numero_tdr} ha sido ANULADO correctamente.`);
+            mostrarNotificacion(`El TDR ${tdr.numero_tdr} ha sido ANULADO correctamente.`, 'success');
             cargarTDRs();
         } else {
-            alert('No se pudo anular el registro. Verifique los permisos.');
+            mostrarNotificacion('No se pudo anular el registro. Verifique los permisos.', 'danger');
         }
     } catch (e) {
-        alert('Error de red al intentar anular el TDR.');
+        mostrarNotificacion('Error de red al intentar anular el TDR.', 'danger');
     }
 };
 
@@ -303,6 +378,52 @@ function obtenerPresupuestoLimpio(valorFormateado) {
     return parseFloat(value) / 100;
 }
 
+function marcarCampo(campo, esValido, mensaje) {
+    const feedback = document.getElementById(`feedback-${campo.id}`);
+    if (!esValido) {
+        campo.classList.add('is-invalid');
+        campo.classList.remove('is-valid');
+        if (feedback && mensaje) feedback.textContent = mensaje;
+    } else {
+        campo.classList.remove('is-invalid');
+        campo.classList.add('is-valid');
+    }
+    return esValido;
+}
+
+function validarFormulario() {
+    const numeroTDR = document.getElementById('numero_tdr');
+    const tipoProceso = document.getElementById('tipo_proceso');
+    const nombreTarea = document.getElementById('nombre_tarea');
+    const direccion = document.getElementById('direccion_solicitante');
+    const responsable = document.getElementById('responsable_designado');
+    const periodo = document.getElementById('periodo_contrato');
+    const presupuesto = document.getElementById('presupuesto_codificado');
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_finalizacion');
+
+    let esValido = true;
+
+    esValido = marcarCampo(numeroTDR, /^TDR-INAMHI-2026-\d{3}$/.test(numeroTDR.value.trim())) && esValido;
+    esValido = marcarCampo(tipoProceso, tipoProceso.value.trim().length >= 3) && esValido;
+    esValido = marcarCampo(nombreTarea, nombreTarea.value.trim().length >= 10) && esValido;
+    esValido = marcarCampo(direccion, direccion.value.trim().length >= 3) && esValido;
+    esValido = marcarCampo(responsable, responsable.value.trim().length >= 3) && esValido;
+    esValido = marcarCampo(periodo, periodo.value.trim().length >= 2) && esValido;
+    esValido = marcarCampo(presupuesto, obtenerPresupuestoLimpio(presupuesto.value) > 0) && esValido;
+    esValido = marcarCampo(fechaInicio, !!fechaInicio.value) && esValido;
+
+    let finValido = !!fechaFin.value;
+    let mensajeFin = 'Selecciona la fecha de finalización.';
+    if (finValido && fechaInicio.value && fechaFin.value < fechaInicio.value) {
+        finValido = false;
+        mensajeFin = 'La fecha de fin no puede ser anterior a la de inicio.';
+    }
+    esValido = marcarCampo(fechaFin, finValido, mensajeFin) && esValido;
+
+    return esValido;
+}
+
 function inicializarValidaciones() {
     const campoInicio = document.getElementById('fecha_inicio');
     const campoFin = document.getElementById('fecha_finalizacion');
@@ -312,13 +433,13 @@ function inicializarValidaciones() {
             if (campoInicio.value) campoFin.min = campoInicio.value;
             if (campoFin.value && campoFin.value < campoInicio.value) {
                 campoFin.value = '';
-                alert('La fecha de finalización no puede ser anterior a la fecha de inicio.');
+                mostrarNotificacion('La fecha de finalización no puede ser anterior a la fecha de inicio.', 'warning');
             }
         });
         campoFin.addEventListener('change', () => {
             if (campoInicio.value && campoFin.value < campoInicio.value) {
                 campoFin.value = '';
-                alert('La fecha de finalización no puede ser anterior a la fecha de inicio.');
+                mostrarNotificacion('La fecha de finalización no puede ser anterior a la fecha de inicio.', 'warning');
             }
         });
     }
@@ -348,6 +469,17 @@ function inicializarValidaciones() {
             }
             let sufijoNumerico = value.substring(PREFIX_TDR.length).replace(/\D/g, "");
             e.target.value = PREFIX_TDR + sufijoNumerico.substring(0, 3);
+        });
+    }
+
+    const form = document.getElementById('tdr-form');
+    if (form) {
+        ['numero_tdr', 'tipo_proceso', 'nombre_tarea', 'direccion_solicitante', 'responsable_designado', 'periodo_contrato', 'presupuesto_codificado', 'fecha_inicio', 'fecha_finalizacion'].forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) {
+                campo.addEventListener('input', () => { if (form.classList.contains('was-validated')) validarFormulario(); });
+                campo.addEventListener('change', () => { if (form.classList.contains('was-validated')) validarFormulario(); });
+            }
         });
     }
 }
@@ -390,6 +522,13 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
+            form.classList.add('was-validated');
+            if (!validarFormulario()) {
+                const primerInvalido = form.querySelector('.is-invalid');
+                if (primerInvalido) primerInvalido.focus();
+                return;
+            }
+
             const presupuestoFormateado = document.getElementById('presupuesto_codificado').value;
             const datos = {
                 numero_tdr: document.getElementById('numero_tdr').value,
@@ -403,10 +542,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 fecha_finalizacion: document.getElementById('fecha_finalizacion').value
             };
 
+            const esActualizacion = tdrIdEnEdicion !== null;
+
+            if (esActualizacion) {
+                const confirmado = await mostrarConfirmacion({
+                    titulo: 'Actualizar TDR',
+                    mensaje: '¿Está seguro de guardar los cambios realizados en este TDR?',
+                    tipo: 'primary',
+                    textoBoton: 'Sí, actualizar',
+                    icono: '✎'
+                });
+                if (!confirmado) return;
+            }
+
             const activeToken = localStorage.getItem('token');
-            const url = tdrIdEnEdicion !== null ? `${API_URL}${tdrIdEnEdicion}` : API_URL;
-            const metodo = tdrIdEnEdicion !== null ? 'PUT' : 'POST';
-            if (tdrIdEnEdicion === null) datos.estado = "Borrador";
+            const url = esActualizacion ? `${API_URL}${tdrIdEnEdicion}` : API_URL;
+            const metodo = esActualizacion ? 'PUT' : 'POST';
+            if (!esActualizacion) datos.estado = "Borrador";
 
             try {
                 const r = await fetch(url, {
@@ -415,14 +567,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(datos)
                 });
                 if (r.ok) {
-                    alert('Operación realizada con éxito.');
+                    mostrarNotificacion('Operación realizada con éxito.', 'success');
                     window.resetearFormulario();
                     cargarTDRs();
                 } else {
                     const err = await r.json();
-                    alert('Error del servidor: ' + JSON.stringify(err.detail || err));
+                    mostrarNotificacion('Error del servidor: ' + JSON.stringify(err.detail || err), 'danger');
                 }
-            } catch (e) { alert('Error de red al intentar guardar.'); }
+            } catch (e) { mostrarNotificacion('Error de red al intentar guardar.', 'danger'); }
         });
     }
 });
