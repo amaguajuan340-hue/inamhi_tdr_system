@@ -14,3 +14,6 @@ __pycache__/
 # Configuraciones locales
 .env
 .vscode/
+
+# Archivos PDF subidos por los usuarios en tiempo de ejecución
+backend/uploads/

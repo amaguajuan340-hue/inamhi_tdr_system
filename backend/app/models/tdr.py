@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Date
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey
+from datetime import datetime, timezone
 from app.core.database import Base
 
 class TDR(Base):
@@ -21,3 +22,9 @@ class TDR(Base):
     
     # Control de flujo de estados del ciclo de vida del TDR
     estado = Column(String, default="Borrador")            # Borrador, Aprobado, Activo, Vencido
+
+    # Autor del registro, para restringir edición del Técnico a sus propios TDR en Borrador
+    creado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+
+    # Fecha de creación del registro, para búsqueda/filtrado y auditoría
+    fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))

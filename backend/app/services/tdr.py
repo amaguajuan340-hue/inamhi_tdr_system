@@ -2,9 +2,9 @@ from sqlalchemy.orm import Session
 from app.models.tdr import TDR
 from app.schemas.tdr import TDRCreate
 
-def create_tdr(db: Session, tdr: TDRCreate):
+def create_tdr(db: Session, tdr: TDRCreate, creado_por_id: int | None = None):
     # Transforma los datos validados del schema y los guarda en la tabla
-    db_tdr = TDR(**tdr.model_dump())
+    db_tdr = TDR(**tdr.model_dump(), creado_por_id=creado_por_id)
     db.add(db_tdr)
     db.commit()
     db.refresh(db_tdr)

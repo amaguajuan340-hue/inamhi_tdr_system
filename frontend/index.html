@@ -180,7 +180,7 @@
 
         /* === BOTONES DINÁMICOS === */
         .btn { border-radius: 50rem; font-weight: 600; transition: all .2s cubic-bezier(.34,1.56,.64,1); }
-        .btn:hover { transform: translateY(-2px) scale(1.03); }
+        .btn:hover { transform: translateY(-2px); }
         .btn:active { transform: translateY(0) scale(0.98); }
 
         .btn-primary {
@@ -270,7 +270,11 @@
         }
         .table > :not(caption) > * > * { vertical-align: middle; background-color: transparent; color: var(--text-main); border-bottom-color: var(--border-color); padding: 1.05rem 1.1rem; }
         .table-hover > tbody > tr:hover > * { background-color: #f5f3ff; }
-        .truncate-text { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; }
+        .truncate-text { max-width: 100%; white-space: normal; overflow-wrap: break-word; display: inline-block; }
+
+        /* Evita que los botones queden tapados por filas/tarjetas vecinas al hacer hover (transform + scale) */
+        .table td { position: relative; }
+        .btn:hover, .btn:focus { position: relative; z-index: 5; }
 
         /* === MODAL DE CONFIRMACIÓN === */
         .confirm-modal {
@@ -361,6 +365,46 @@
         .badge.bg-warning-subtle { background: linear-gradient(120deg,#fef3c7,#fde68a) !important; color: #92400e !important; border-color: transparent !important; }
         .badge.bg-success-subtle { background: linear-gradient(120deg,#d1fae5,#a7f3d0) !important; color: #065f46 !important; border-color: transparent !important; }
         .badge.bg-secondary-subtle { background: linear-gradient(120deg,#e2e8f0,#cbd5e1) !important; color: #475569 !important; border-color: transparent !important; }
+
+        /* === SELECTOR DE ESTADO (reemplaza los botones Aprobar/Anular) === */
+        select.estado-select {
+            font-weight: 800;
+            letter-spacing: .02em;
+            border-radius: 50rem;
+            border: none;
+            box-shadow: none !important;
+            padding: .4rem 2.1rem .4rem 1rem;
+            font-size: .74rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            width: auto;
+            min-width: 9.5rem;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23475569' d='M8 11 3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right .75rem center;
+            background-size: .65rem;
+            transition: box-shadow .2s ease, transform .2s ease;
+        }
+        select.estado-select:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(30,34,51,0.12) !important; }
+        select.estado-select:focus { outline: none; box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25) !important; }
+        select.estado-select.estado-borrador { background-color: #fde68a; color: #92400e; }
+        select.estado-select.estado-aprobado { background-color: #a7f3d0; color: #065f46; }
+        select.estado-select.estado-anulado { background-color: #cbd5e1; color: #475569; }
+        select.estado-select.estado-vencido { background-color: #fecaca; color: #991b1b; }
+
+        /* === AUDITORÍA === */
+        .auditoria-tabla-wrap { max-height: 68vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: .75rem; }
+        .auditoria-tabla-wrap table thead th { position: sticky; top: 0; z-index: 2; }
+        .badge-accion { display: inline-block; padding: .3em .75em; border-radius: 50rem; font-size: .72rem; font-weight: 800; letter-spacing: .02em; }
+        .badge-accion-crear, .badge-accion-cargar { background: #d1fae5; color: #065f46; }
+        .badge-accion-editar, .badge-accion-actualizar { background: #dbeafe; color: #1e40af; }
+        .badge-accion-eliminar { background: #fee2e2; color: #991b1b; }
+        .badge-accion-aprobar { background: #d1fae5; color: #065f46; }
+        .badge-accion-login { background: #ede9fe; color: #5b21b6; }
+        .badge-accion-reset, .badge-accion-desbloqueo { background: #fef3c7; color: #92400e; }
+        .badge-accion-otro { background: #e2e8f0; color: #475569; }
     </style>
 </head>
 <body>
@@ -379,6 +423,12 @@
                     </div>
                     <span class="user-info small" id="user-display">Verificando identidad institucional...</span>
                 </div>
+                <button class="btn btn-logout btn-sm px-3 rounded-pill d-flex align-items-center gap-2" id="btn-usuarios" style="display:none;" onclick="abrirModalUsuarios()">
+                    <span>Usuarios</span>
+                </button>
+                <button class="btn btn-logout btn-sm px-3 rounded-pill d-flex align-items-center gap-2" id="btn-auditoria" style="display:none;" onclick="abrirModalAuditoria()">
+                    <span>Auditoría</span>
+                </button>
                 <button class="btn btn-logout btn-sm px-3 rounded-pill d-flex align-items-center gap-2" onclick="cerrarSesion()">
                     <span>Cerrar Sesión</span>
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -408,8 +458,10 @@
                         </div>
                         <div class="col-md-6">
                             <label for="tipo_proceso" class="form-label fw-semibold small">Tipo de Proceso</label>
-                            <input type="text" class="form-control" id="tipo_proceso" placeholder="Ej. Ínfima cuantía, Subasta Inversa" required>
-                            <div class="invalid-feedback" id="feedback-tipo_proceso">Indica el tipo de proceso.</div>
+                            <select class="form-control" id="tipo_proceso" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                            <div class="invalid-feedback" id="feedback-tipo_proceso">Selecciona el tipo de proceso.</div>
                         </div>
 
                         <div class="col-12 form-section-title"><span class="step-badge">2</span>Descripción y Responsables</div>
@@ -420,8 +472,10 @@
                         </div>
                         <div class="col-md-6">
                             <label for="direccion_solicitante" class="form-label fw-semibold small">Dirección Solicitante</label>
-                            <input type="text" class="form-control" id="direccion_solicitante" placeholder="Ej. Dirección de Información Hidrometeorológica" required>
-                            <div class="invalid-feedback" id="feedback-direccion_solicitante">Indica la dirección solicitante.</div>
+                            <select class="form-control" id="direccion_solicitante" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                            <div class="invalid-feedback" id="feedback-direccion_solicitante">Selecciona la dirección solicitante.</div>
                         </div>
                         <div class="col-md-6">
                             <label for="responsable_designado" class="form-label fw-semibold small">Responsable Designado</label>
@@ -473,7 +527,7 @@
             <div class="col-md-4">
                 <div class="card card-kpi kpi-borrador">
                     <div class="card-body">
-                        <div class="kpi-title">TDRs en Borrador</div>
+                        <div class="kpi-title">TDRs en Proceso</div>
                         <div class="kpi-value" id="kpi-borrador">0</div>
                     </div>
                 </div>
@@ -481,16 +535,66 @@
             <div class="col-md-4">
                 <div class="card card-kpi kpi-aprobado">
                     <div class="card-body">
-                        <div class="kpi-title">TDRs Aprobados / Firmados</div>
+                        <div class="kpi-title">TDRs Completados</div>
                         <div class="kpi-value" id="kpi-aprobado">0</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- BUSCADOR -->
-        <div class="mb-3">
-            <input type="text" id="buscador" class="form-control" placeholder="🔍 Buscar por número de TDR, responsable, proceso o dirección técnica..." oninput="filtrarTDRs()">
+        <!-- PANEL DE FILTROS AVANZADOS -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center" id="toggle-filtros" data-bs-toggle="collapse" data-bs-target="#panel-filtros" style="cursor:pointer;">
+                <h2 class="h6 mb-0 text-primary-emphasis">🔎 Filtros Avanzados</h2>
+                <span class="chevron">▼</span>
+            </div>
+            <div class="collapse" id="panel-filtros">
+                <div class="card-body row g-2">
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Número de TDR</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-numero">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Nombre / Tarea</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-nombre">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Dirección</label>
+                        <select class="form-control form-control-sm" id="filtro-direccion"><option value="">Todas</option></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Profesional / Responsable</label>
+                        <input type="text" class="form-control form-control-sm" id="filtro-profesional">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Tipo de contratación</label>
+                        <select class="form-control form-control-sm" id="filtro-tipo"><option value="">Todos</option></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Estado</label>
+                        <select class="form-control form-control-sm" id="filtro-estado">
+                            <option value="">Todos</option>
+                            <option value="Borrador">En Proceso</option>
+                            <option value="Aprobado" selected>Completado</option>
+                            <option value="Anulado">Anulado</option>
+                            <option value="Vencido">Vencido</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Fecha de creación desde</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-desde">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Fecha de creación hasta</label>
+                        <input type="date" class="form-control form-control-sm" id="filtro-fecha-hasta">
+                    </div>
+                    <div class="col-12 d-flex gap-3 justify-content-end mt-4 pt-2 border-top">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="limpiarFiltrosAvanzados()">Limpiar filtros</button>
+                        <button class="btn btn-sm btn-primary" onclick="filtrarTDRs()">Aplicar filtros</button>
+                        <button class="btn btn-sm btn-outline-print" onclick="imprimirInformeConsolidado()">🖨️ Informe consolidado (PDF)</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- TABLA -->
@@ -539,7 +643,272 @@
     <!-- CONTENEDOR DE NOTIFICACIONES (TOASTS) -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- BANNER FLOTANTE DE ALERTAS DE VENCIMIENTO -->
+    <div id="alertas-flotantes" style="position:fixed; bottom:1.5rem; right:1.5rem; z-index:1070; max-width:360px;"></div>
+
+    <!-- MODAL: DETALLE DE TDR (Documentos / Soportes / Actas / Conformidad) -->
+    <div class="modal fade" id="modalDetalleTDR" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detalleTDRTitulo">Detalle de TDR</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="detalleTabs">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-documentos" type="button">Documentos</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-soportes" type="button">Soportes</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-actas" type="button">Actas Parciales</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-conformidad" type="button">Informe Conformidad</button></li>
+                    </ul>
+                    <div class="tab-content pt-3">
+                        <!-- DOCUMENTOS -->
+                        <div class="tab-pane fade show active" id="tab-documentos">
+                            <form id="form-documento" class="row g-2 align-items-end mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Tipo de documento</label>
+                                    <div class="d-flex gap-1">
+                                        <select class="form-control" id="documento-tipo" required></select>
+                                        <button type="button" class="btn btn-outline-secondary flex-shrink-0" id="btn-agregar-tipo-documento" title="Agregar nuevo tipo de documento">+</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Archivo PDF</label>
+                                    <input type="file" class="form-control" id="documento-archivo" accept="application/pdf" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">Subir</button>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>Tipo</th><th>Archivo</th><th>Fecha</th><th></th></tr></thead>
+                                    <tbody id="lista-documentos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- SOPORTES -->
+                        <div class="tab-pane fade" id="tab-soportes">
+                            <form id="form-soporte" class="row g-2 align-items-end mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Fecha programada</label>
+                                    <input type="date" class="form-control" id="soporte-fecha" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Cumplimiento</label>
+                                    <select class="form-control" id="soporte-cumplimiento" disabled></select>
+                                    <div class="form-text" id="soporte-cumplimiento-ayuda">Se habilita al llegar la fecha programada.</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Informe PDF</label>
+                                    <input type="file" class="form-control" id="soporte-archivo" accept="application/pdf" disabled>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">Registrar</button>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>Número</th><th>Fecha</th><th>Cumplimiento</th><th>Informe</th><th></th></tr></thead>
+                                    <tbody id="lista-soportes"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- ACTAS -->
+                        <div class="tab-pane fade" id="tab-actas">
+                            <form id="form-acta" class="row g-2 align-items-end mb-3">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Fecha del acta</label>
+                                    <input type="date" class="form-control" id="acta-fecha" required>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Archivo PDF</label>
+                                    <input type="file" class="form-control" id="acta-archivo" accept="application/pdf" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">Subir</button>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>Fecha</th><th>Archivo</th><th></th></tr></thead>
+                                    <tbody id="lista-actas"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- CONFORMIDAD -->
+                        <div class="tab-pane fade" id="tab-conformidad">
+                            <form id="form-conformidad" class="row g-2 align-items-end mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Fecha de emisión</label>
+                                    <input type="date" class="form-control" id="conformidad-fecha" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Tipo</label>
+                                    <select class="form-control" id="conformidad-final">
+                                        <option value="false">Parcial</option>
+                                        <option value="true">Final</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Archivo PDF</label>
+                                    <input type="file" class="form-control" id="conformidad-archivo" accept="application/pdf" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">Subir</button>
+                                </div>
+                            </form>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead><tr><th>Fecha</th><th>Tipo</th><th>Archivo</th><th></th></tr></thead>
+                                    <tbody id="lista-conformidad"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: GESTIÓN DE USUARIOS (solo Director) -->
+    <div class="modal fade" id="modalUsuarios" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestión de Usuarios</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-nuevo-usuario" class="row g-2 align-items-end mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Usuario</label>
+                            <input type="text" class="form-control" id="nuevo-username" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Nombre completo</label>
+                            <input type="text" class="form-control" id="nuevo-nombre" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Rol</label>
+                            <select class="form-control" id="nuevo-rol">
+                                <option value="tecnico">Técnico</option>
+                                <option value="director">Administrador</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Contraseña</label>
+                            <input type="password" class="form-control" id="nuevo-password" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">Crear</button>
+                        </div>
+                    </form>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th></th></tr></thead>
+                            <tbody id="lista-usuarios"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: RESETEAR CONTRASEÑA DE USUARIO -->
+    <div class="modal fade" id="modalResetPassword" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Restablecer contraseña</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form-reset-password">
+                    <div class="modal-body">
+                        <p class="small text-muted mb-2">Usuario: <strong id="reset-password-username"></strong></p>
+                        <label class="form-label small fw-semibold">Nueva contraseña</label>
+                        <input type="password" class="form-control" id="reset-password-nueva" minlength="4" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Restablecer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NUEVO TIPO DE DOCUMENTO -->
+    <div class="modal fade" id="modalNuevoTipoDocumento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar tipo de documento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form-nuevo-tipo-documento">
+                    <div class="modal-body">
+                        <label class="form-label small fw-semibold">Nombre del nuevo tipo de documento</label>
+                        <input type="text" class="form-control" id="nuevo-tipo-documento-nombre" placeholder="Ej. Certificado de garantía" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agregar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: AUDITORÍA (solo Director) -->
+    <div class="modal fade" id="modalAuditoria" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 96vw;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">📋 Registro de Auditoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-2 mb-3">
+                        <div class="input-group flex-grow-1">
+                            <span class="input-group-text">🔎</span>
+                            <input type="text" class="form-control" id="filtro-auditoria" placeholder="Buscar por fecha, usuario, acción, entidad o detalle..." oninput="renderizarAuditoria()">
+                        </div>
+                        <button type="button" class="btn btn-outline-success flex-shrink-0" onclick="exportarAuditoriaExcel()">📊 Exportar Excel</button>
+                    </div>
+                    <div class="table-responsive auditoria-tabla-wrap">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Entidad</th><th>Detalle</th></tr></thead>
+                            <tbody id="lista-auditoria"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BLOQUEANTE: TDR A 7 DÍAS O MENOS DE VENCER -->
+    <div class="modal fade" id="modalBloqueoVencimiento" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">⚠ Vencimiento crítico de TDR</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Los siguientes TDR están a <strong>7 días o menos</strong> de su fecha de finalización:</p>
+                    <ul id="lista-tdr-bloqueados" class="small"></ul>
+                    <p class="text-muted small">Ingresa la contraseña de un Administrador/Director para continuar.</p>
+                    <input type="password" class="form-control" id="input-password-desbloqueo" placeholder="Contraseña de administrador">
+                    <div class="text-danger small mt-1" id="error-desbloqueo" style="display:none;">Contraseña incorrecta.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger w-100" id="btn-desbloquear">Desbloquear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=15"></script>
 </body>
 </html>
